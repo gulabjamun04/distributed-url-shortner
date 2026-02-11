@@ -12,7 +12,7 @@ from app.models import URL
 from app.utils.hashing import get_shard_for_key
 from app.utils.keygen import encode_base62
 from app.services.cache import get_url, set_url, set_null_url # Import caching functions
-from app.services.producer import send_click_event, start_kafka_producer, stop_kafka_producer
+from app.services.producer import send_click_event, start_kafka_producer, stop_kafka_producer, send_new_url_event
 
 app = FastAPI()
 
@@ -35,7 +35,7 @@ class ShortenURLRequest(BaseModel):
     long_url: str
 
 @app.post("/shorten")
-async def shorten_url(request: ShortenURLRequest):
+async def shorten_url(request: ShortenURLRequest, background_tasks: BackgroundTasks):
     # Generate a random 6-character short code
     short_code = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
     
@@ -46,6 +46,7 @@ async def shorten_url(request: ShortenURLRequest):
         await session.commit()
         await session.refresh(new_url)
         await set_url(new_url.short_code, new_url.long_url) # Cache the new URL
+        background_tasks.add_task(send_new_url_event, new_url.short_code, new_url.long_url)
     return {"short_url": f"/{new_url.short_code}"}
 
 @app.get("/{short_code}")

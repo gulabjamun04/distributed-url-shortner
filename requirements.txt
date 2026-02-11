@@ -1,7 +1,12 @@
 uvicorn
+fastapi
 sqlalchemy[asyncpg]
+asyncpg
+greenlet
 pydantic-settings
 psycopg2-binary
 uhashring
 redis
 aiokafka
+huggingface-hub
+python-dotenv

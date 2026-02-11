@@ -8,6 +8,9 @@ from sqlalchemy import update
 from app.db import SHARD_ENGINES, get_session, Base
 from app.models import URL
 from app.utils.hashing import get_shard_for_key
+from dotenv import load_dotenv
+
+load_dotenv() # Load environment variables from .env file
 
 # Kafka broker (Redpanda) configuration
 KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "redpanda:9092")

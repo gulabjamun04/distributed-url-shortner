@@ -9,6 +9,7 @@ class URL(Base):
     long_url = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     click_count = Column(Integer, default=0)
+    category = Column(String, nullable=True)
 
     def __repr__(self):
-        return f"<URL(short_code='{self.short_code}', long_url='{self.long_url}', click_count={self.click_count})>"
+        return f"<URL(short_code='{self.short_code}', long_url='{self.long_url}', click_count={self.click_count}, category='{self.category}')>"
