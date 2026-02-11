@@ -2,3 +2,4 @@ uvicorn
 sqlalchemy[asyncpg]
 pydantic-settings
 psycopg2-binary
+uhashring
