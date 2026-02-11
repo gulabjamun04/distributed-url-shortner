@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request, Response
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, BackgroundTasks
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -12,18 +12,24 @@ from app.models import URL
 from app.utils.hashing import get_shard_for_key
 from app.utils.keygen import encode_base62
 from app.services.cache import get_url, set_url, set_null_url # Import caching functions
+from app.services.producer import send_click_event, start_kafka_producer, stop_kafka_producer
 
 app = FastAPI()
 
 # Event handler to create tables on startup
 @app.on_event("startup")
 async def startup_event():
+    await start_kafka_producer()
     for shard_name, engine in SHARD_ENGINES.items():
         async with engine.begin() as conn:
             # Drop and create tables for development purposes
             await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
         print(f"Database tables created for {shard_name}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await stop_kafka_producer()
 
 class ShortenURLRequest(BaseModel):
     long_url: str
@@ -43,10 +49,11 @@ async def shorten_url(request: ShortenURLRequest):
     return {"short_url": f"/{new_url.short_code}"}
 
 @app.get("/{short_code}")
-async def redirect_to_long_url(short_code: str):
+async def redirect_to_long_url(short_code: str, background_tasks: BackgroundTasks):
     # 1. Check cache first
     cached_long_url = await get_url(short_code)
     if cached_long_url:
+        background_tasks.add_task(send_click_event, short_code) # Send click event as background task
         return RedirectResponse(url=cached_long_url)
     
     # 2. If cache miss, fetch from DB
@@ -60,6 +67,7 @@ async def redirect_to_long_url(short_code: str):
         if url_entry:
             # 3. If found in DB, set in cache and redirect
             await set_url(url_entry.short_code, url_entry.long_url)
+            background_tasks.add_task(send_click_event, short_code) # Send click event as background task
             return RedirectResponse(url=url_entry.long_url)
         else:
             # 4. If not found in DB, set null entry in cache and raise 404
