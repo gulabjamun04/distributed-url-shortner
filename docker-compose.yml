@@ -84,6 +84,27 @@ services:
       timeout: 10s
       retries: 5
 
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - db-shard-0
+      - db-shard-1
+      - db-shard-2
+      - redis
+      - redpanda
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    depends_on:
+      - app
+
 volumes:
   db-shard-0-data:
   db-shard-1-data:

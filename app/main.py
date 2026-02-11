@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, BackgroundTasks
-from fastapi.responses import RedirectResponse
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Response, BackgroundTasks, Form
+from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 import random
@@ -15,6 +16,7 @@ from app.services.cache import get_url, set_url, set_null_url # Import caching f
 from app.services.producer import send_click_event, start_kafka_producer, stop_kafka_producer, send_new_url_event
 
 app = FastAPI()
+templates = Jinja2Templates(directory="app/templates")
 
 # Event handler to create tables on startup
 @app.on_event("startup")
@@ -31,23 +33,38 @@ async def startup_event():
 async def shutdown_event():
     await stop_kafka_producer()
 
+async def get_all_urls():
+    all_urls = []
+    for shard_name in SHARD_ENGINES.keys():
+        async for session in get_session(shard_name):
+            result = await session.execute(select(URL).order_by(URL.created_at.desc()))
+            all_urls.extend(result.scalars().all())
+    return all_urls
+
+@app.get("/", response_class=HTMLResponse)
+async def read_root(request: Request):
+    urls = await get_all_urls()
+    return templates.TemplateResponse("index.html", {"request": request, "urls": urls})
+
 class ShortenURLRequest(BaseModel):
     long_url: str
 
-@app.post("/shorten")
-async def shorten_url(request: ShortenURLRequest, background_tasks: BackgroundTasks):
+@app.post("/shorten", response_class=HTMLResponse)
+async def shorten_url(request: Request, background_tasks: BackgroundTasks, long_url: str = Form(...)):
     # Generate a random 6-character short code
     short_code = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
     
     shard_name = get_shard_for_key(short_code)
     async for session in get_session(shard_name):
-        new_url = URL(short_code=short_code, long_url=request.long_url)
+        new_url = URL(short_code=short_code, long_url=long_url)
         session.add(new_url)
         await session.commit()
         await session.refresh(new_url)
         await set_url(new_url.short_code, new_url.long_url) # Cache the new URL
         background_tasks.add_task(send_new_url_event, new_url.short_code, new_url.long_url)
-    return {"short_url": f"/{new_url.short_code}"}
+    
+    urls = await get_all_urls()
+    return templates.TemplateResponse("index.html", {"request": request, "urls": urls, "short_url": f"/{new_url.short_code}"})
 
 @app.get("/{short_code}")
 async def redirect_to_long_url(short_code: str, background_tasks: BackgroundTasks):

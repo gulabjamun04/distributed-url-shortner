@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Shortener</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+</head>
+<body>
+    <main class="container">
+        <nav>
+            <ul>
+                <li><strong>URL Shortener</strong></li>
+            </ul>
+        </nav>
+
+        <section>
+            <h2>Shorten a URL</h2>
+            <form action="/shorten" method="post">
+                <label for="long_url">URL to shorten:</label>
+                <input type="url" id="long_url" name="long_url" required>
+                <button type="submit">Shorten</button>
+            </form>
+            {% if short_url %}
+            <p>
+                Shortened URL: <a href="{{ short_url }}">{{ request.base_url }}{{ short_url.lstrip('/') }}</a>
+            </p>
+            {% endif %}
+        </section>
+
+        <section>
+            <h2>Statistics</h2>
+            {% if urls %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Short Code</th>
+                        <th>Original URL</th>
+                        <th>Clicks</th>
+                        <th>Category</th>
+                        <th>Created At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for url in urls %}
+                    <tr>
+                        <td><a href="/{{ url.short_code }}">{{ url.short_code }}</a></td>
+                        <td>{{ url.long_url }}</td>
+                        <td>{{ url.click_count }}</td>
+                        <td>{{ url.category or 'N/A' }}</td>
+                        <td>{{ url.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No URLs have been shortened yet.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>
