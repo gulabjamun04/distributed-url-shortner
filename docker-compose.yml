@@ -67,15 +67,7 @@ services:
     ports:
       - "9092:9092"
       - "9644:9644"
-    command:
-      - redpanda start
-      - --node-id 0
-      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
-      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
-      - --smp 1
-      - --memory 1G
-      - --overprovisioned
-      - --set redpanda.enable_idempotence=true
+    command: redpanda start --node-id 0 --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092 --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092 --smp 1 --memory 1G --overprovisioned --set redpanda.enable_idempotence=true
     volumes:
       - redpanda-data:/var/lib/redpanda/data
     healthcheck:
@@ -84,18 +76,44 @@ services:
       timeout: 10s
       retries: 5
 
+  redpanda-setup:
+    image: redpandadata/redpanda:latest
+    entrypoint: bash
+    command: -c "
+      sleep 20;
+      rpk topic create clicks --brokers redpanda:29092 || true;
+      rpk topic create new_urls --brokers redpanda:29092 || true;
+      "
+    depends_on:
+      - redpanda
+
   app:
     build: .
     ports:
       - "8000:8000"
-    env_file:
-      - .env
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:29092
+      DB_SHARD_0_URL: postgresql+asyncpg://user:password@db-shard-0:5432/url_shortener
+      DB_SHARD_1_URL: postgresql+asyncpg://user:password@db-shard-1:5432/url_shortener
+      DB_SHARD_2_URL: postgresql+asyncpg://user:password@db-shard-2:5432/url_shortener
     depends_on:
       - db-shard-0
       - db-shard-1
       - db-shard-2
       - redis
       - redpanda
+      - redpanda-setup # Ensure topics are created before app starts
+
+  worker:
+    build: .
+    command: bash -c "sleep 20 && python worker/analytics.py"
+
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:29092
+      PYTHONPATH: /app
+    depends_on:
+      - redpanda
+      - redpanda-setup # Ensure topics are created before worker starts
 
   cloudflared:
     image: cloudflare/cloudflared:latest

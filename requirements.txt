@@ -12,3 +12,5 @@ huggingface-hub
 python-dotenv
 Jinja2
 python-multipart
+pandas
+locust
