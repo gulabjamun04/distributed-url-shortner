@@ -98,7 +98,7 @@ async def main():
             short_code = await create_url_entry(long_url)
             benchmark_short_codes.append(short_code)
             if (i + 1) % 100 == 0:
-                print(f"Seeded {i + 1}/{len(urls_to_seed)} URLs.")
+                print(f"Seeded {i + 1}/{len(urls_to_seed)} URLs.\n")
         except Exception as e:
             print(f"Error seeding URL '{long_url}': {e}")
 
@@ -106,10 +106,11 @@ async def main():
     os.makedirs(os.path.dirname(BENCHMARK_KEYS_FILE), exist_ok=True)
     with open(BENCHMARK_KEYS_FILE, "w") as f:
         for short_code in benchmark_short_codes:
-            f.write(f"{short_code}")
+            f.write(f"{short_code}\n")
 
     print(f"Successfully seeded {len(benchmark_short_codes)} URLs.")
     print(f"Generated short codes saved to {BENCHMARK_KEYS_FILE}")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

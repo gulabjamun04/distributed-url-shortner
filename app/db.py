@@ -5,9 +5,9 @@ from app.settings import settings
 Base = declarative_base()
 
 SHARD_ENGINES = {
-    "shard0": create_async_engine(settings.DB_SHARD_0_URL, echo=True),
-    "shard1": create_async_engine(settings.DB_SHARD_1_URL, echo=True),
-    "shard2": create_async_engine(settings.DB_SHARD_2_URL, echo=True),
+    "shard0": create_async_engine(settings.DB_SHARD_0_URL, echo=True, pool_size=10, max_overflow=20),
+    "shard1": create_async_engine(settings.DB_SHARD_1_URL, echo=True, pool_size=10, max_overflow=20),
+    "shard2": create_async_engine(settings.DB_SHARD_2_URL, echo=True, pool_size=10, max_overflow=20),
 }
 
 # Example of how to get a session

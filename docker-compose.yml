@@ -49,6 +49,34 @@ services:
       timeout: 5s
       retries: 5
 
+  # PostgreSQL Exporters
+  postgres-exporter-0:
+    image: prometheuscommunity/postgres-exporter:latest
+    environment:
+      DATA_SOURCE_NAME: postgresql://user:password@db-shard-0:5432/url_shortener?sslmode=disable
+    ports:
+      - "9187:9187"
+    depends_on:
+      - db-shard-0
+
+  postgres-exporter-1:
+    image: prometheuscommunity/postgres-exporter:latest
+    environment:
+      DATA_SOURCE_NAME: postgresql://user:password@db-shard-1:5432/url_shortener?sslmode=disable
+    ports:
+      - "9188:9187"
+    depends_on:
+      - db-shard-1
+
+  postgres-exporter-2:
+    image: prometheuscommunity/postgres-exporter:latest
+    environment:
+      DATA_SOURCE_NAME: postgresql://user:password@db-shard-2:5432/url_shortener?sslmode=disable
+    ports:
+      - "9189:9187"
+    depends_on:
+      - db-shard-2
+
   redis:
     image: redis:7-alpine
     ports:
@@ -60,6 +88,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # Redis Exporter
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    command: --redis.addr redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis
 
   redpanda:
     image: redpandadata/redpanda:latest
@@ -89,8 +126,12 @@ services:
 
   app:
     build: .
+    volumes:
+      - ./data:/app/data
     ports:
       - "8000:8000"
+      - "8000:8000/udp" # Required for some prometheus client
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 # Increased workers
     environment:
       KAFKA_BOOTSTRAP_SERVERS: redpanda:29092
       DB_SHARD_0_URL: postgresql+asyncpg://user:password@db-shard-0:5432/url_shortener
@@ -106,14 +147,44 @@ services:
 
   worker:
     build: .
-    command: bash -c "sleep 20 && python worker/analytics.py"
-
+    command: python worker/analytics.py # Removed sleep 20
+    ports:
+      - "8001:8001" # Expose worker metrics port
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: redpanda:29092
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
       PYTHONPATH: /app
     depends_on:
       - redpanda
       - redpanda-setup # Ensure topics are created before worker starts
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command: --config.file=/etc/prometheus/prometheus.yml --web.enable-lifecycle
+    ports:
+      - "9090:9090"
+    depends_on:
+      - app
+      - postgres-exporter-0
+      - postgres-exporter-1
+      - postgres-exporter-2
+      - redis-exporter
+
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
 
   cloudflared:
     image: cloudflare/cloudflared:latest
@@ -129,3 +200,5 @@ volumes:
   db-shard-2-data:
   redis-data:
   redpanda-data:
+  prometheus-data:
+  grafana-data:

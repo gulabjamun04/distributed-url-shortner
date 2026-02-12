@@ -13,4 +13,4 @@ python-dotenv
 Jinja2
 python-multipart
 pandas
-locust
+prometheus_client
