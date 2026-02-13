@@ -2,115 +2,91 @@ import asyncio
 import pandas as pd
 import random
 import string
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from app.db import SHARD_ENGINES, get_session, Base
-from app.models import URL
-from app.utils.hashing import get_shard_for_key
+import sys
 import os
 
-# --- Configuration ---
+# Set RUNNING_LOCALLY before importing app modules
+os.environ["RUNNING_LOCALLY"] = "true"
+
+# Set PYTHONPATH to include project root
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from app.models import URL
+from app.db import SHARD_ENGINES, get_session, Base
+from app.utils.hashing import get_shard_for_key
+from sqlalchemy.future import select
+
+
+# Configuration
 CSV_FILE = "data/urls.csv"
 BENCHMARK_KEYS_FILE = "data/benchmark_keys.txt"
 NUM_URLS_TO_SEED = 5000
 SHORT_CODE_LENGTH = 6
+BATCH_SIZE = 30 # Concurrency limit
 
-# --- Helper Functions (reusing from app where applicable) ---
+async def create_url_entry(long_url):
+    """Creates a URL entry, handling duplicates."""
+    while True:
+        short_code = ''.join(random.choices(string.ascii_letters + string.digits, k=SHORT_CODE_LENGTH))
+        shard_name = get_shard_for_key(short_code)
+        
+        async for session in get_session(shard_name):
+            try:
+                result = await session.execute(select(URL).filter(URL.short_code == short_code))
+                if result.scalar_one_or_none() is None:
+                    new_url = URL(short_code=short_code, long_url=long_url)
+                    session.add(new_url)
+                    await session.commit()
+                    return short_code
+            except Exception as e:
+                print(f"Error inserting {long_url}: {e}")
+                return None # Indicate failure
+        # If we are here, it means there was a collision, so we loop and try again.
 
+async def seed_database():
+    """Seeds the database with URLs from a CSV file."""
+    print("--- Starting Database Seeding ---")
 
-def generate_short_code(length: int = SHORT_CODE_LENGTH) -> str:
-    """Generates a random alphanumeric short code."""
-    chars = string.ascii_letters + string.digits
-    return ''.join(random.choices(chars, k=length))
-
-
-async def create_url_entry(long_url: str, short_code: str | None = None) -> str:
-    """
-    Creates a URL entry in the appropriate shard.
-    If short_code is None, a new one will be generated.
-    """
-    if short_code is None:
-        short_code = generate_short_code()
-
-    shard_name = get_shard_for_key(short_code)
-    async for session in get_session(shard_name):
-        new_url = URL(short_code=short_code, long_url=long_url)
-        session.add(new_url)
-        await session.commit()
-        await session.refresh(new_url)
-        return new_url.short_code
-    return short_code  # Should not be reached
-
-
-async def main():
-    print(f"Seeding database with {NUM_URLS_TO_SEED} URLs from {CSV_FILE}...")
-
-    if not os.path.exists(CSV_FILE):
-        print(f"Error: CSV file not found at {CSV_FILE}")
-        print("Please ensure 'urls.csv' is in the 'data/' directory.")
-        return
-
-    # Load URLs from CSV
     try:
         df = pd.read_csv(CSV_FILE)
-        # Assuming the CSV has a column named 'url' or similar
-        # Adjust column name if necessary
-        if 'url' in df.columns:
-            all_urls = df['url'].tolist()
-        elif 'URL' in df.columns:  # Common alternative
-            all_urls = df['URL'].tolist()
-        else:
-            print(f"Error: Could not find 'url' or 'URL' column in {CSV_FILE}")
-            print(f"Available columns: {df.columns.tolist()}")
-            return
-
-    except Exception as e:
-        print(f"Error reading CSV file: {e}")
+    except FileNotFoundError:
+        print(f"Error: {CSV_FILE} not found.")
         return
 
-    # Filter for valid URLs and select 5000
-    safe_urls = [url for url in all_urls if isinstance(
-        url, str) and url.startswith(('http://', 'https://'))]
+    valid_urls_df = df[df['url'].str.startswith(('http://', 'https://'), na=False)]
+    urls_to_seed = valid_urls_df['url'].head(NUM_URLS_TO_SEED).tolist()
+    
+    print(f"Found {len(urls_to_seed)} URLs to seed.")
 
-    if len(safe_urls) < NUM_URLS_TO_SEED:
-        print(
-            f"Warning: Found only {len(safe_urls)} valid URLs, less than the requested {NUM_URLS_TO_SEED}.")
-        urls_to_seed = safe_urls
-    else:
-        urls_to_seed = random.sample(safe_urls, NUM_URLS_TO_SEED)
-
-    if not urls_to_seed:
-        print("No URLs to seed after filtering. Exiting.")
-        return
-
-    # Ensure tables are created (re-run startup logic without dropping)
-    # This is a simplified version, ideally handled by alembic migrations
-    for shard_name, engine in SHARD_ENGINES.items():
+    for engine in SHARD_ENGINES.values():
         async with engine.begin() as conn:
-            # await conn.run_sync(Base.metadata.drop_all) # Not dropping in seed script
             await conn.run_sync(Base.metadata.create_all)
-        print(f"Ensured database tables for {shard_name}")
+    print("Database tables ensured.")
 
-    # Seed URLs and collect short codes
-    benchmark_short_codes = []
-    for i, long_url in enumerate(urls_to_seed):
-        try:
-            short_code = await create_url_entry(long_url)
-            benchmark_short_codes.append(short_code)
-            if (i + 1) % 100 == 0:
-                print(f"Seeded {i + 1}/{len(urls_to_seed)} URLs.\n")
-        except Exception as e:
-            print(f"Error seeding URL '{long_url}': {e}")
+    all_short_codes = []
+    
+    last_progress_report = 0
+    for i in range(0, len(urls_to_seed), BATCH_SIZE):
+        batch_urls = urls_to_seed[i:i+BATCH_SIZE]
+        
+        tasks = [create_url_entry(url) for url in batch_urls]
+        results = await asyncio.gather(*tasks)
+        
+        successful_codes = [code for code in results if code]
+        all_short_codes.extend(successful_codes)
+        
+        if len(all_short_codes) - last_progress_report >= 500:
+             print(f"Inserted {len(all_short_codes)}/{len(urls_to_seed)} URLs...")
+             last_progress_report = len(all_short_codes)
 
-    # Save generated short codes
-    os.makedirs(os.path.dirname(BENCHMARK_KEYS_FILE), exist_ok=True)
     with open(BENCHMARK_KEYS_FILE, "w") as f:
-        for short_code in benchmark_short_codes:
-            f.write(f"{short_code}\n")
+        for code in all_short_codes:
+            if code:
+                f.write(f"{code}\n")
 
-    print(f"Successfully seeded {len(benchmark_short_codes)} URLs.")
-    print(f"Generated short codes saved to {BENCHMARK_KEYS_FILE}")
+    print(f"\n--- Seeding Complete ---")
+    print(f"Seeded {len(all_short_codes)} URLs. Keys saved to {BENCHMARK_KEYS_FILE}")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(seed_database())
