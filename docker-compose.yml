@@ -130,9 +130,10 @@ services:
       - ./data:/app/data
     ports:
       - "8000:8000"
-      - "8000:8000/udp" # Required for some prometheus client
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 # Increased workers
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4 --backlog 2048 --loop uvloop --http httptools
     environment:
+      UVICORN_WORKERS: 4
+      UVICORN_BACKLOG: 2048
       KAFKA_BOOTSTRAP_SERVERS: redpanda:29092
       DB_SHARD_0_URL: postgresql+asyncpg://user:password@db-shard-0:5432/url_shortener
       DB_SHARD_1_URL: postgresql+asyncpg://user:password@db-shard-1:5432/url_shortener
@@ -143,7 +144,8 @@ services:
       - db-shard-2
       - redis
       - redpanda
-      - redpanda-setup # Ensure topics are created before app starts
+      - redpanda-setup
+
 
   worker:
     build: .
@@ -151,7 +153,7 @@ services:
     ports:
       - "8001:8001" # Expose worker metrics port
     environment:
-      KAFKA_BOOTSTRAP_SERVERS: redpanda:9092
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:29092
       PYTHONPATH: /app
     depends_on:
       - redpanda

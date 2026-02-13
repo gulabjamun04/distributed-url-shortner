@@ -1,0 +1,317 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Total RPS",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "fieldConfig": {
+        "defaults": { 
+          "unit": "reqps", 
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "green", "value": 1000 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"fastapi_app\"}[$__rate_interval]))",
+          "legendFormat": "Total RPS",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "RPS by Status",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "min": 0 },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum by (status)(rate(http_requests_total{job=\"fastapi_app\"}[$__rate_interval]))",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "2xx / 4xx / 5xx RPS",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "min": 0 },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"fastapi_app\", status=~\"2..\"}[$__rate_interval]))",
+          "legendFormat": "2xx",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"fastapi_app\", status=~\"4..\"}[$__rate_interval]))",
+          "legendFormat": "4xx",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"fastapi_app\", status=~\"5..\"}[$__rate_interval]))",
+          "legendFormat": "5xx",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Error Rate (%)",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "min": 0 },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "(sum(rate(http_requests_total{job=\"fastapi_app\", status=~\"4..|5..\"}[$__rate_interval])) / sum(rate(http_requests_total{job=\"fastapi_app\"}[$__rate_interval]))) * 100",
+          "legendFormat": "Error %",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Latency P50",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "min": 0 },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"fastapi_app\"}[$__rate_interval])) by (le))",
+          "legendFormat": "P50",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Latency P99",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 8 },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "min": 0 },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"fastapi_app\"}[$__rate_interval])) by (le))",
+          "legendFormat": "P99",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Active Database Connections",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 80 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [ "lastNotNull" ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "text": {},
+        "textMode": "auto",
+        "wide": false
+      },
+      "targets": [
+        {
+          "expr": "sum(pg_stat_database_numbackends{datname='url_shortener'})",
+          "legendFormat": "Active Connections",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "gauge",
+      "title": "Redis Hit Rate",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.7 },
+              { "color": "green", "value": 0.9 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [ "lastNotNull" ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "rate(redis_keyspace_hits_total[1m]) / (rate(redis_keyspace_hits_total[1m]) + rate(redis_keyspace_misses_total[1m]))",
+          "legendFormat": "Hit Rate",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Kafka Consumer Lag",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 100 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [ "lastNotNull" ],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "text": {},
+        "textMode": "auto",
+        "wide": false
+      },
+      "targets": [
+        {
+          "expr": "sum(kafka_consumergroup_lag)",
+          "legendFormat": "Total Lag",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "heatmap",
+      "title": "Request Latency Heatmap",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "sum(increase(http_request_duration_seconds_bucket{job=\"fastapi_app\"}[$__interval])) by (le)",
+          "legendFormat": "{{le}}",
+          "refId": "A"
+        }
+      ],
+      "cards": {
+        "cardPadding": null,
+        "cardRound": null
+      },
+      "color": {
+        "mode": "palette-classic",
+        "cardColor": "#b4ff00",
+        "colorScale": "sqrt",
+        "exponent": 0.5,
+        "colorScheme": "interpolateOranges"
+      },
+      "dataFormat": "tsbuckets",
+      "heatmap": {},
+      "legend": {
+        "show": true
+      },
+      "tooltip": {
+        "show": true,
+        "showHistogram": true
+      },
+      "xAxis": {
+        "show": true
+      },
+      "yAxis": {
+        "show": true,
+        "format": "s"
+      }
+    },
+    {
+      "id": 11,
+      "type": "bargauge",
+      "title": "Top 5 Slowest Endpoints (P99)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 32 },
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "orientation": "horizontal",
+        "displayMode": "lcd"
+      },
+      "targets": [
+        {
+          "expr": "topk(5, histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job=\"fastapi_app\"}[5m])) by (endpoint))",
+          "legendFormat": "{{endpoint}}",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 36,
+  "style": "dark",
+  "templating": { "list": [] },
+  "time": { "from": "now-15m", "to": "now" },
+  "refresh": "1s",
+  "title": "FastAPI Application Performance (Full Debug View)",
+  "version": 2
+}

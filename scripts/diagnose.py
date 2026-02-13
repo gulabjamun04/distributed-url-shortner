@@ -200,11 +200,11 @@ def check_app_latency():
 def check_cache_hit_rate():
     print("Checking Cache Hit Rate...")
     try:
-        # Query Prometheus for Redis hit and miss rates
+        # Query Prometheus for Redis hit and miss cumulative counts
         prometheus_url = "http://localhost:9090/api/v1/query"
         
-        hits_query = "rate(redis_keyspace_hits_total[1m])"
-        misses_query = "rate(redis_keyspace_misses_total[1m])"
+        hits_query = "redis_keyspace_hits_total"
+        misses_query = "redis_keyspace_misses_total"
 
         hits_response = requests.get(prometheus_url, params={'query': hits_query}, timeout=5)
         misses_response = requests.get(prometheus_url, params={'query': misses_query}, timeout=5)

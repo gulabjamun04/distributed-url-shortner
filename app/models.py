@@ -2,6 +2,7 @@ from sqlalchemy import Column, String, DateTime, Integer
 from sqlalchemy.sql import func
 from app.db import Base
 
+
 class URL(Base):
     __tablename__ = "urls"
 
