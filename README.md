@@ -13,13 +13,13 @@ A high-performance, production-grade URL shortening service built with FastAPI, 
 
 ## 🎯 Performance Results
 
-| Metric | Result | Details |
-|--------|--------|---------|
-| **Throughput** | 1,094 RPS | Sustained throughput on MacBook Air |
-| **P50 Latency** | 38ms | Median response time |
-| **P99 Latency** | 98ms | 99th percentile under load |
-| **Cache Hit Rate** | 100% | Perfect cache efficiency |
-| **Success Rate** | 100% | Zero errors across 11,000+ requests |
+| Metric             | Result    | Details                             |
+| ------------------ | --------- | ----------------------------------- |
+| **Throughput**     | 1,094 RPS | Sustained throughput on MacBook Air |
+| **P50 Latency**    | 38ms      | Median response time                |
+| **P99 Latency**    | 98ms      | 99th percentile under load          |
+| **Cache Hit Rate** | 100%      | Perfect cache efficiency            |
+| **Success Rate**   | 100%      | Zero errors across 11,000+ requests |
 
 📊 **[View Full Load Test Results](./LOAD_TEST_RESULTS.md)**
 
@@ -28,6 +28,7 @@ A high-performance, production-grade URL shortening service built with FastAPI, 
 ## ✨ Features
 
 ### Core Functionality
+
 - ⚡ **High-Performance Redirects** - Sub-100ms latency with intelligent caching
 - 🔀 **Database Sharding** - Horizontal scalability via consistent hashing
 - 💾 **Multi-Layer Caching** - Redis with look-aside + cache-null patterns
@@ -36,6 +37,7 @@ A high-performance, production-grade URL shortening service built with FastAPI, 
 - 🌐 **Production Deployment** - Cloudflare tunnel with zero-downtime
 
 ### Architecture
+
 - **Application-Level Sharding:** 3 PostgreSQL nodes with uhashring
 - **Event-Driven Analytics:** Decoupled via Redpanda (Kafka-compatible)
 - **Observability:** Prometheus + Grafana with 10+ custom dashboards
@@ -44,6 +46,7 @@ A high-performance, production-grade URL shortening service built with FastAPI, 
 ---
 
 ## 🏗️ Architecture Overview
+
 ```
 ┌─────────────┐
 │   Client    │
@@ -85,6 +88,7 @@ A high-performance, production-grade URL shortening service built with FastAPI, 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Docker & Docker Compose
 - Python 3.11+ (for local development)
 - 8GB RAM minimum (recommended: 16GB)
@@ -92,28 +96,33 @@ A high-performance, production-grade URL shortening service built with FastAPI, 
 ### Installation
 
 1. **Clone the repository**
+
 ```bash
 git clone https://github.com/yourusername/distributed-url-shortener.git
 cd distributed-url-shortener
 ```
 
 2. **Start all services**
+
 ```bash
 docker-compose up -d
 ```
 
 3. **Wait for services to be ready** (~30 seconds)
+
 ```bash
 docker-compose ps
 # All services should show "Up"
 ```
 
 4. **Seed the database** (5,000 URLs)
+
 ```bash
 python scripts/seed_db.py
 ```
 
 5. **Access the application**
+
 - App: http://localhost:8000
 - Grafana: http://localhost:3000 (admin/admin)
 - Prometheus: http://localhost:9090
@@ -123,13 +132,16 @@ python scripts/seed_db.py
 ## 📊 Monitoring & Dashboards
 
 ### Grafana Dashboards
+
 Access at `http://localhost:3000`:
+
 - **FastAPI Performance:** RPS, latency percentiles, error rates
 - **Database Metrics:** Connection pools, query duration, shard distribution
 - **Cache Analytics:** Hit/miss rates, memory usage
 - **System Health:** CPU, memory, network I/O
 
 ### Prometheus Targets
+
 - FastAPI app: `app:8000/metrics`
 - Worker: `worker:8001/metrics`
 - PostgreSQL (3x): `postgres-exporter-{0,1,2}:9187`
@@ -143,21 +155,25 @@ Access at `http://localhost:3000`:
 ### Run Performance Tests
 
 1. **Warm up the cache**
+
 ```bash
 python scripts/warmup_cache.py --url http://localhost:8000
 ```
 
 2. **Run stress test**
+
 ```bash
 python tests/stress_test.py --url http://localhost:8000 --workers 500 --duration 60
 ```
 
 3. **View results**
+
 ```bash
 python scripts/analyze_results.py
 ```
 
 ### Expected Results
+
 - **RPS:** 1,000-1,200
 - **P50 Latency:** 30-50ms
 - **P99 Latency:** 80-100ms
@@ -167,21 +183,22 @@ python scripts/analyze_results.py
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Application** | FastAPI, Python 3.14 | Async API framework |
-| **Database** | PostgreSQL 16 (Alpine) | Sharded persistent storage |
-| **Cache** | Redis 7 (Alpine) | High-speed in-memory cache |
-| **Messaging** | Redpanda | Kafka-compatible event streaming |
-| **Load Balancing** | Consistent Hashing (uhashring) | Request distribution |
-| **Monitoring** | Prometheus + Grafana | Metrics & visualization |
-| **Deployment** | Docker Compose | Container orchestration |
-| **CDN** | Cloudflare Tunnel | Public access & caching |
-| **AI/ML** | HuggingFace Transformers | URL classification |
+| Layer              | Technology                     | Purpose                          |
+| ------------------ | ------------------------------ | -------------------------------- |
+| **Application**    | FastAPI, Python 3.14           | Async API framework              |
+| **Database**       | PostgreSQL 16 (Alpine)         | Sharded persistent storage       |
+| **Cache**          | Redis 7 (Alpine)               | High-speed in-memory cache       |
+| **Messaging**      | Redpanda                       | Kafka-compatible event streaming |
+| **Load Balancing** | Consistent Hashing (uhashring) | Request distribution             |
+| **Monitoring**     | Prometheus + Grafana           | Metrics & visualization          |
+| **Deployment**     | Docker Compose                 | Container orchestration          |
+| **CDN**            | Cloudflare Tunnel              | Public access & caching          |
+| **AI/ML**          | HuggingFace Transformers       | URL classification               |
 
 ---
 
 ## 📁 Project Structure
+
 ```
 distributed-url-shortener/
 ├── app/
@@ -232,7 +249,9 @@ distributed-url-shortener/
 ## 🔧 Configuration
 
 ### Environment Variables
+
 Create `.env` file:
+
 ```env
 # Database
 DB_SHARD_0_URL=postgresql+asyncpg://user:password@db-shard-0:5432/url_shortener
@@ -251,7 +270,9 @@ TUNNEL_TOKEN=your_tunnel_token_here
 ```
 
 ### Performance Tuning
+
 Edit `docker-compose.override.yml`:
+
 ```yaml
 services:
   app:
@@ -272,6 +293,7 @@ services:
 ## 📈 Scaling Guide
 
 ### Horizontal Scaling
+
 1. **Add Database Shards**
    - Update `SHARD_ENGINES` in `app/db.py`
    - Add service in `docker-compose.yml`
@@ -285,17 +307,49 @@ services:
    - Update `cache.py` for cluster mode
 
 ### Vertical Scaling
+
 - Increase PostgreSQL `shared_buffers` to 25% of RAM
 - Increase connection pool sizes
 - Allocate more memory to Redis (`maxmemory` config)
 
 ---
 
+## Screenshots
+
+### 1. Terminal Load Test - 1,094 RPS Achievement
+
+![Terminal 1094 RPS](screenshots/terminal_1094_rps.png)
+
+### 2. Grafana - Total RPS Dashboard
+
+![Grafana Total RPS](screenshots/grafana_total_rps.png)
+
+### 3. Grafana - P99 Latency (98ms)
+
+![Grafana P99 Latency](screenshots/grafana_latency_p99.png)
+
+### 4. Grafana - P50 Latency (2.7ms)
+
+![Grafana P50 Latency](screenshots/grafana_latency_p50.png)
+
+### 5. Grafana - Redis Hit Rate (100%)
+
+![Redis Hit Rate](screenshots/grafana_redis_hit_rate.png)
+
+### 6. Prometheus - All Targets UP
+
+![Prometheus Targets](screenshots/prometheus_targets.png)
+
+### 7. Production Application
+
+![Production Interface](screenshots/production_app_interface.png)
+
 ## 🐛 Troubleshooting
 
 ### Common Issues
 
 **Issue:** Low RPS (<500)
+
 ```bash
 # Check worker count
 docker-compose logs app | grep workers
@@ -305,6 +359,7 @@ UVICORN_WORKERS=8
 ```
 
 **Issue:** High latency
+
 ```bash
 # Check cache hit rate
 python scripts/diagnose.py
@@ -314,6 +369,7 @@ python scripts/warmup_cache.py
 ```
 
 **Issue:** Connection errors
+
 ```bash
 # Check all services are up
 docker-compose ps
