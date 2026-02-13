@@ -320,29 +320,36 @@ services:
 
 ![Terminal 1094 RPS](screenshots/terminal_1094_rps.png)
 
+
 ### 2. Grafana - Total RPS Dashboard
 
 ![Grafana Total RPS](screenshots/grafana_total_rps.png)
+
 
 ### 3. Grafana - P99 Latency (98ms)
 
 ![Grafana P99 Latency](screenshots/grafana_latency_p99.png)
 
+
 ### 4. Grafana - P50 Latency (2.7ms)
 
 ![Grafana P50 Latency](screenshots/grafana_latency_p50.png)
+
 
 ### 5. Grafana - Redis Hit Rate (100%)
 
 ![Redis Hit Rate](screenshots/grafana_redis_hit_rate.png)
 
+
 ### 6. Prometheus - All Targets UP
 
 ![Prometheus Targets](screenshots/prometheus_targets.png)
 
+
 ### 7. Production Application
 
 ![Production Interface](screenshots/production_app_interface.png)
+
 
 ## 🐛 Troubleshooting
 
