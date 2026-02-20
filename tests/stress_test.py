@@ -5,7 +5,7 @@ import random
 import argparse
 import json
 from collections import defaultdict, deque
-from datetime import datetime
+from datetime import datetime, timezone
 
 # --- Globals ---
 stats = {
@@ -50,8 +50,6 @@ def worker(worker_id, keys, target_url):
             with stats_lock:
                 stats['total'] += 1
                 stats['errors'] += 1
-        
-        time.sleep(0.001)
 
 def monitor_stats(start_time):
     """Monitors and prints stats every second."""
@@ -197,7 +195,7 @@ def main():
                 "p95": round(p95, 2),
                 "p99": round(p99, 2),
             },
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         
         with open("tests/load_test_results.json", "w") as f:

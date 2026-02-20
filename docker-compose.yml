@@ -159,6 +159,21 @@ services:
       - redpanda
       - redpanda-setup # Ensure topics are created before worker starts
 
+  classifier:
+    build: .
+    command: python worker/classifier.py
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: redpanda:29092
+      HF_TOKEN: ${HF_TOKEN:-}
+      PYTHONPATH: /app
+      PYTHONUNBUFFERED: 1
+    depends_on:
+      - redpanda
+      - redpanda-setup
+      - db-shard-0
+      - db-shard-1
+      - db-shard-2
+
   prometheus:
     image: prom/prometheus:latest
     volumes:

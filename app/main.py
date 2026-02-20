@@ -2,7 +2,6 @@ from contextlib import asynccontextmanager
 from app.services.producer import send_click_event, start_kafka_producer, stop_kafka_producer, send_new_url_event
 # Import caching functions
 from app.services.cache import get_url, set_url, set_null_url
-from app.utils.keygen import encode_base62
 from app.utils.hashing import get_shard_for_key
 from app.models import URL
 from app.db import SHARD_ENGINES, get_session, Base

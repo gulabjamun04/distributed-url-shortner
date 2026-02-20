@@ -25,6 +25,12 @@ async def seed_database():
     """
     print("Starting database seeding...")
 
+    # Create tables on all shards if they don't exist
+    for shard_name, engine in SHARD_ENGINES.items():
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        print(f"Ensured tables exist on {shard_name}")
+
     try:
         df = pd.read_csv('data/urls.csv')
     except FileNotFoundError:
@@ -106,15 +112,9 @@ async def seed_database():
     except IOError as e:
         print(f"Error saving benchmark keys to data/benchmark_keys.txt: {e}")
 
-if __name__ == '__main__':
-    # Initialize database schema for all shards (if not already done)
-    # This part should ideally be run once during setup or migration.
-    # For a seeding script, we assume the tables already exist.
-    # If not, you might need to add:
-    # for shard_name, engine in SHARD_ENGINES.items():
-    #     async def create_tables():
-    #         async with engine.begin() as conn:
-    #             await conn.run_sync(Base.metadata.create_all)
-    #     asyncio.run(create_tables())
+    # Cleanly dispose all engine connection pools to avoid asyncpg CancelledError noise
+    for engine in SHARD_ENGINES.values():
+        await engine.dispose()
 
+if __name__ == '__main__':
     asyncio.run(seed_database())

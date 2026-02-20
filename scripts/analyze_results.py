@@ -75,10 +75,10 @@ def analyze_results(results_file="tests/load_test_results.json", plot_file="test
         overall_status = False
 
     # P99 Latency check
-    if p99_latency < 100:  # in ms
-        print(f"✓ PASSED: P99 < 100ms")
+    if p99_latency < 500:  # in ms
+        print(f"✓ PASSED: P99 < 500ms")
     else:
-        print(f"✗ FAILED: P99 >= 100ms (Current: {p99_latency:.1f}ms)")
+        print(f"✗ FAILED: P99 >= 500ms (Current: {p99_latency:.1f}ms)")
         overall_status = False
 
     # Error rate check

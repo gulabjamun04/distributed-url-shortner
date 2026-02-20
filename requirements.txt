@@ -17,3 +17,4 @@ sqlalchemy[asyncpg]
 uhashring
 uvicorn
 uvloop
+huggingface_hub
