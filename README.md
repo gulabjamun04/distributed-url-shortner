@@ -1,9 +1,9 @@
 # 🔗 Distributed URL Shortener
 
-A high-performance, production-grade URL shortening service built with FastAPI, PostgreSQL sharding, Redis caching, and Kafka event streaming. **Capable of handling 1,000+ requests per second** on commodity hardware.
+A high-performance, production-grade URL shortening service built with FastAPI, PostgreSQL sharding, Redis caching, and Kafka event streaming. **Capable of handling 1,500+ requests per second** on commodity hardware.
 
-[![Performance](https://img.shields.io/badge/RPS-1094-success)](./LOAD_TEST_RESULTS.md)
-[![Latency](https://img.shields.io/badge/P99-98ms-success)](./LOAD_TEST_RESULTS.md)
+[![Performance](https://img.shields.io/badge/RPS-1497-success)](./LOAD_TEST_RESULTS.md)
+[![Latency](https://img.shields.io/badge/P99-228ms-success)](./LOAD_TEST_RESULTS.md)
 [![Uptime](https://img.shields.io/badge/Uptime-100%25-success)](./LOAD_TEST_RESULTS.md)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -13,13 +13,17 @@ A high-performance, production-grade URL shortening service built with FastAPI, 
 
 ## 🎯 Performance Results
 
-| Metric             | Result    | Details                             |
-| ------------------ | --------- | ----------------------------------- |
-| **Throughput**     | 1,094 RPS | Sustained throughput on MacBook Air |
-| **P50 Latency**    | 38ms      | Median response time                |
-| **P99 Latency**    | 98ms      | 99th percentile under load          |
-| **Cache Hit Rate** | 100%      | Perfect cache efficiency            |
-| **Success Rate**   | 100%      | Zero errors across 11,000+ requests |
+| Metric             | v2 (Async)       | v1 (Threaded)   | Target  |
+| ------------------ | ---------------- | --------------- | ------- |
+| **Throughput**     | **1,497 RPS**    | 1,094 RPS       | 1,000+  |
+| **Total Requests** | 90,000           | 11,026          | —       |
+| **P50 Latency**    | 129ms            | 38ms            | <500ms  |
+| **P99 Latency**    | 228ms            | 98ms            | <500ms  |
+| **Cache Hit Rate** | 100%             | 100%            | >90%    |
+| **Success Rate**   | 100%             | 100%            | >99%    |
+| **Duration**       | 60s              | 10s             | —       |
+
+> **v2** uses async `aiohttp` + `uvloop` (1,500 target RPS, 60s sustained). **v1** uses threaded `requests` (50 workers, 10s burst). Higher v2 throughput comes with proportionally higher latency under heavier load.
 
 📊 **[View Full Load Test Results](./LOAD_TEST_RESULTS.md)**
 
@@ -29,7 +33,7 @@ A high-performance, production-grade URL shortening service built with FastAPI, 
 
 ### Core Functionality
 
-- ⚡ **High-Performance Redirects** - Sub-100ms latency with intelligent caching
+- ⚡ **High-Performance Redirects** - Sub-230ms P99 latency under 1,500 RPS load
 - 🔀 **Database Sharding** - Horizontal scalability via consistent hashing
 - 💾 **Multi-Layer Caching** - Redis with look-aside + cache-null patterns
 - 📊 **Real-Time Analytics** - Asynchronous click tracking via Kafka
@@ -98,7 +102,7 @@ A high-performance, production-grade URL shortening service built with FastAPI, 
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/yourusername/distributed-url-shortener.git
+git clone https://github.com/gulabjamun04/distributed-url-shortner.git
 cd distributed-url-shortener
 ```
 
@@ -160,13 +164,19 @@ Access at `http://localhost:3000`:
 python scripts/warmup_cache.py --url http://localhost:8000
 ```
 
-2. **Run stress test**
+2. **Run load test (async — recommended)**
 
 ```bash
-python tests/stress_test.py --url http://localhost:8000 --workers 500 --duration 60
+python tests/load_generator.py --url http://localhost:8000 --rps 1500 --duration 60
 ```
 
-3. **View results**
+3. **Or run threaded load test (legacy)**
+
+```bash
+python tests/stress_test.py --url http://localhost:8000 --workers 300 --duration 60
+```
+
+4. **View results**
 
 ```bash
 python scripts/analyze_results.py
@@ -174,10 +184,12 @@ python scripts/analyze_results.py
 
 ### Expected Results
 
-- **RPS:** 1,000-1,200
-- **P50 Latency:** 30-50ms
-- **P99 Latency:** 80-100ms
-- **Error Rate:** <1%
+| Metric         | Async (`load_generator.py`) | Threaded (`stress_test.py`) |
+| -------------- | --------------------------- | --------------------------- |
+| **RPS**        | 1,200-1,500                 | 800-1,100                   |
+| **P50 Latency**| 100-150ms                   | 30-50ms                     |
+| **P99 Latency**| 200-300ms                   | 80-100ms                    |
+| **Error Rate** | <1%                         | <1%                         |
 
 ---
 
@@ -208,22 +220,17 @@ distributed-url-shortener/
 │   ├── services/
 │   │   ├── cache.py         # Redis caching logic
 │   │   └── producer.py      # Kafka event producer
-│   │   └── __pycache__/
 │   ├── utils/
-│   │   ├── hashing.py       # Consistent hashing
-│   │   └── keygen.py        # Base62 encoding
-│   │   └── __pycache__/
+│   │   └── hashing.py       # Consistent hashing
 │   └── templates/
 │       └── index.html       # Frontend UI
 ├── worker/
 │   ├── analytics.py         # Click tracking consumer
 │   └── classifier.py        # AI URL categorization
-│   └── __pycache__/
 ├── scripts/
 │   ├── seed_db.py           # Database seeder
 │   ├── diagnose.py          # System health check
 │   └── warmup_cache.py      # Cache pre-loader
-│   └── __pycache__/
 ├── grafana/
 │   └── provisioning/        # Dashboard configs
 │       ├── dashboards/
@@ -236,11 +243,10 @@ distributed-url-shortener/
 ├── prometheus/
 │   └── prometheus.yml       # Monitoring config
 ├── tests/
-│   ├── load_generator.py
+│   ├── load_generator.py    # Async load test (aiohttp + uvloop)
+│   ├── stress_test.py       # Threaded load test (requests)
 │   ├── load_test_results.json
-│   ├── requirements.txt
-│   └── stress_test.py
-├── venv/
+│   └── requirements.txt
 └── docker-compose.yml       # Service orchestration
 ```
 
@@ -316,9 +322,9 @@ services:
 
 ## Screenshots
 
-### 1. Terminal Load Test - 1,094 RPS Achievement
+### 1. Terminal Load Test - 1,497 RPS Achievement (v2 Async)
 
-![Terminal 1094 RPS](screenshots/terminal_1094_rps.png)
+![Terminal 1497 RPS](screenshots/terminal_1094_rps.png)
 
 
 ### 2. Grafana - Total RPS Dashboard
@@ -326,7 +332,7 @@ services:
 ![Grafana Total RPS](screenshots/grafana_total_rps.png)
 
 
-### 3. Grafana - P99 Latency (98ms)
+### 3. Grafana - P99 Latency
 
 ![Grafana P99 Latency](screenshots/grafana_latency_p99.png)
 
@@ -404,7 +410,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 📞 Contact
 
-**Project Link:** [github.com/yourusername/distributed-url-shortener](https://github.com/yourusername/distributed-url-shortener)
+**Project Link:** [github.com/yourusername/distributed-url-shortener](https://github.com/gulabjamun04/distributed-url-shortner)
 
 **Live Demo:** [api.distributed-url-shortner.online](https://api.distributed-url-shortner.online/)
 
