@@ -408,11 +408,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ---
 
-## 📞 Contact
 
-**Project Link:** [github.com/yourusername/distributed-url-shortener](https://github.com/gulabjamun04/distributed-url-shortner)
-
-**Live Demo:** [api.distributed-url-shortner.online](https://api.distributed-url-shortner.online/)
 
 ---
 
